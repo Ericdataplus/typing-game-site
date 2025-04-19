@@ -1273,6 +1273,17 @@ function calculateExperienceGain(wpm, accuracy) {
         // 30 seconds uses the base XP
     }
     
+    // Streak bonus
+    if (currentStreak >= 100) {
+        expGain += 50; // Massive streak bonus
+    } else if (currentStreak >= 50) {
+        expGain += 30; // Large streak bonus
+    } else if (currentStreak >= 25) {
+        expGain += 20; // Medium streak bonus
+    } else if (currentStreak >= 10) {
+        expGain += 10; // Small streak bonus
+    }
+    
     // Apply prestige XP boost if applicable
     if (prestigeLevel >= 1 && prestigeLevel < 5) {
         // 25% XP boost (Prestige 1)
@@ -1421,6 +1432,18 @@ function showTestResults(wpm, accuracy) {
         timeBonusText = ' (1.2x bonus)';
     }
     
+    // Get streak bonus text
+    let streakBonusText = '';
+    if (currentStreak >= 100) {
+        streakBonusText = ' (+50 XP bonus)';
+    } else if (currentStreak >= 50) {
+        streakBonusText = ' (+30 XP bonus)';
+    } else if (currentStreak >= 25) {
+        streakBonusText = ' (+20 XP bonus)';
+    } else if (currentStreak >= 10) {
+        streakBonusText = ' (+10 XP bonus)';
+    }
+    
     // Create content
     resultsOverlay.innerHTML = `
         <div class="results-content">
@@ -1438,7 +1461,7 @@ function showTestResults(wpm, accuracy) {
                 <span>Time Duration:</span> <span>${testDuration} seconds${timeBonusText}</span>
             </div>
             <div class="result-item">
-                <span>Best Streak:</span> <span>${currentStreak} ${isNewStreakRecord ? '🏆 New Record!' : ''}</span>
+                <span>Best Streak:</span> <span>${currentStreak} ${isNewStreakRecord ? '🏆 New Record!' : ''}${streakBonusText}</span>
             </div>
             <div class="result-item">
                 <span>Experience Gained:</span> <span>+${expGained}</span>
