@@ -198,16 +198,22 @@ function injectThemeStyles() {
         }
         
         body.theme_neon #text-display span.current {
-            background-color: #f0f;
+            background-color: rgba(0, 255, 255, 0.3);
             color: #fff;
         }
         
         body.theme_neon #text-display span.correct {
-            color: #0f0;
+            color: #00ff99;
         }
         
         body.theme_neon #text-display span.incorrect {
-            color: #f00;
+            color: #ff5555;
+            background-color: rgba(255, 0, 0, 0.2);
+        }
+        
+        body.theme_neon .text-display-area {
+            background-color: #111827;
+            color: #e0e0e0;
         }
         
         /* Gold Theme */
@@ -2151,7 +2157,7 @@ function applyTheme(themeId) {
     if (!unlockedRewards.includes(themeId)) return;
     
     // Remove any existing theme classes
-    document.body.classList.remove('theme-hacker', 'theme-sunset', 'theme-neon', 'theme-gold');
+    document.body.classList.remove('theme_hacker', 'theme_sunset', 'theme_neon', 'theme_gold', 'theme-hacker', 'theme-sunset', 'theme-neon', 'theme-gold');
     
     // Get current active theme (if any)
     const currentTheme = activeRewards.find(id => id.startsWith('theme_'));
@@ -2169,8 +2175,10 @@ function applyTheme(themeId) {
         activeRewards.push(themeId);
     }
     
-    // Apply the theme class
+    // Apply the theme class (convert from theme_name to theme-name format for CSS)
+    const themeClass = themeId.replace('_', '-');
     document.body.classList.add(themeId);
+    document.body.classList.add(themeClass);
     
     // If the hacker theme is being applied, create the matrix animation
     if (themeId === 'theme_hacker') {
@@ -2296,8 +2304,10 @@ function applyActiveThemeOnLoad() {
     // Check if there's an active theme
     const activeTheme = activeRewards.find(id => id.startsWith('theme_'));
     if (activeTheme && unlockedRewards.includes(activeTheme)) {
-        // Apply theme
+        // Apply theme - both formats for consistency
         document.body.classList.add(activeTheme);
+        const themeClass = activeTheme.replace('_', '-');
+        document.body.classList.add(themeClass);
         
         // If it's the hacker theme, create matrix animation
         if (activeTheme === 'theme_hacker') {
@@ -2870,8 +2880,10 @@ window.addEventListener('load', function() {
     // Apply active theme
     const activeTheme = activeRewards.find(id => id.startsWith('theme_'));
     if (activeTheme && unlockedRewards.includes(activeTheme)) {
-        // Apply theme
+        // Apply theme - both formats for consistency
         document.body.classList.add(activeTheme);
+        const themeClass = activeTheme.replace('_', '-');
+        document.body.classList.add(themeClass);
         
         // If it's the hacker theme, create matrix animation
         if (activeTheme === 'theme_hacker') {
