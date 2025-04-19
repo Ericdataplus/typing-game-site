@@ -678,7 +678,22 @@ function getRandomPassage() {
     // Store this index as the last used for this difficulty
     lastPassageIndex[difficulty] = selectedIndex;
     
-    return passages[selectedIndex];
+    let selectedPassage = passages[selectedIndex];
+    
+    // Adjust passage length based on test duration
+    if (testDuration >= 300) { // 5 minutes
+        // Double the passage length for 5 minute tests
+        selectedPassage = selectedPassage.repeat(2);
+    } else if (testDuration >= 180) { // 3 minutes
+        // Use 1.5x passage length for 3 minute tests
+        selectedPassage = selectedPassage + ' ' + selectedPassage.substring(0, selectedPassage.length / 2);
+    } else if (testDuration <= 30) { // 30 seconds
+        // Use shorter passage for 30 second tests
+        selectedPassage = selectedPassage.substring(0, selectedPassage.length / 2);
+    }
+    // 60 seconds (1 minute) uses the default passage length
+    
+    return selectedPassage;
 }
 
 // Format the passage text into individual character spans
@@ -1244,6 +1259,20 @@ function calculateExperienceGain(wpm, accuracy) {
             break;
     }
     
+    // Time duration modifier
+    switch (testDuration) {
+        case 300: // 5 minutes
+            expGain = Math.floor(expGain * 2); // Double experience
+            break;
+        case 180: // 3 minutes
+            expGain = Math.floor(expGain * 1.5); // 50% more experience
+            break;
+        case 60: // 1 minute
+            expGain = Math.floor(expGain * 1.2); // 20% more experience
+            break;
+        // 30 seconds uses the base XP
+    }
+    
     // Apply prestige XP boost if applicable
     if (prestigeLevel >= 1 && prestigeLevel < 5) {
         // 25% XP boost (Prestige 1)
@@ -1382,6 +1411,16 @@ function showTestResults(wpm, accuracy) {
     // Calculate experience gained
     const expGained = calculateExperienceGain(wpm, accuracy);
     
+    // Get time duration bonus text
+    let timeBonusText = '';
+    if (testDuration === 300) {
+        timeBonusText = ' (2x bonus)';
+    } else if (testDuration === 180) {
+        timeBonusText = ' (1.5x bonus)';
+    } else if (testDuration === 60) {
+        timeBonusText = ' (1.2x bonus)';
+    }
+    
     // Create content
     resultsOverlay.innerHTML = `
         <div class="results-content">
@@ -1394,6 +1433,9 @@ function showTestResults(wpm, accuracy) {
             </div>
             <div class="result-item">
                 <span>Difficulty:</span> <span>${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}</span>
+            </div>
+            <div class="result-item">
+                <span>Time Duration:</span> <span>${testDuration} seconds${timeBonusText}</span>
             </div>
             <div class="result-item">
                 <span>Best Streak:</span> <span>${currentStreak} ${isNewStreakRecord ? '🏆 New Record!' : ''}</span>
@@ -1497,6 +1539,9 @@ function handleTimeButtonClick(e) {
         
         // Save preference to localStorage
         localStorage.setItem(PREFERRED_TIME_KEY, newTime);
+        
+        // Reset test to update text length based on new duration
+        resetTest();
     }
 }
 
