@@ -1398,6 +1398,14 @@ function endTest() {
     // Save data to localStorage
     saveUserData(finalWpm, finalAccuracy);
     
+    // Reset scroll position to top to avoid scrolling issues
+    if (textDisplay) {
+        textDisplay.scrollTo({
+            top: 0,
+            behavior: 'instant'
+        });
+    }
+    
     // Optionally show results more prominently or provide feedback
     showTestResults(finalWpm, finalAccuracy);
     
@@ -1491,6 +1499,15 @@ function showTestResults(wpm, accuracy) {
     const nextTestBtn = document.getElementById('next-test-btn');
     nextTestBtn.addEventListener('click', () => {
         resultsOverlay.remove();
+        
+        // Ensure text display is scrolled to top before resetting
+        if (textDisplay) {
+            textDisplay.scrollTo({
+                top: 0,
+                behavior: 'instant'
+            });
+        }
+        
         resetTest();
     });
     
@@ -1596,6 +1613,14 @@ function resetTest() {
     // Load and format a new passage
     currentPassage = getRandomPassage();
     formatPassage(currentPassage);
+    
+    // Reset scroll position to top
+    if (textDisplay) {
+        textDisplay.scrollTo({
+            top: 0,
+            behavior: 'instant' // Use instant instead of smooth for immediate scroll
+        });
+    }
 
     // Focus the input field to be ready
     textInput.focus();
@@ -1666,11 +1691,16 @@ function handleInput(event) {
     lastTypingTime = Date.now();
     
     // Set a timeout to pause the timer if no typing activity
-    pauseTimeout = setTimeout(() => {
-        if (isTestRunning) {
-            pauseTimer();
-        }
-    }, 3000); // Pause after 3 seconds of inactivity
+    // Only set the timeout if we're actively in a test
+    if (isTestRunning && currentIndex > 0) {
+        pauseTimeout = setTimeout(() => {
+            // Double-check that we're still in a test and there's been no typing
+            const inactiveTime = Date.now() - lastTypingTime;
+            if (isTestRunning && inactiveTime >= 3000 && !isPaused) {
+                pauseTimer();
+            }
+        }, 3000); // Pause after 3 seconds of inactivity
+    }
     
     // Start the timer on the very first valid input
     if (!isTestRunning && textInput.value.length > 0) {
@@ -3118,6 +3148,12 @@ function pauseTimer() {
     if (!isPaused && isTestRunning) {
         isPaused = true;
         
+        // Check if a pause indicator already exists
+        const existingIndicator = document.getElementById('pause-indicator');
+        if (existingIndicator) {
+            return; // Don't create another one if one already exists
+        }
+        
         // Show pause indicator
         const pauseIndicator = document.createElement('div');
         pauseIndicator.id = 'pause-indicator';
@@ -3137,11 +3173,16 @@ function resumeTimer() {
     if (isPaused && isTestRunning) {
         isPaused = false;
         
-        // Remove pause indicator immediately
+        // Remove pause indicator with a fade-out animation
         const pauseIndicator = document.getElementById('pause-indicator');
         if (pauseIndicator) {
             pauseIndicator.classList.remove('visible');
-            pauseIndicator.remove(); // Remove immediately instead of waiting
+            // Wait for fade-out animation to complete before removing
+            setTimeout(() => {
+                if (pauseIndicator && pauseIndicator.parentNode) {
+                    pauseIndicator.remove();
+                }
+            }, 300); // 300ms matches CSS transition time
         }
     }
 }
