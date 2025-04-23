@@ -281,7 +281,7 @@ const textPassages = {
         "nanotechnology involves manipulating matter at the atomic scale. it has potential applications in medicine, electronics and material science.",
         "wireless technology allows devices to communicate without physical connections. wifi, bluetooth and cellular networks are all forms of wireless communication.",
         "machine learning is a subset of artificial intelligence that enables computers to learn without explicit programming. it powers many modern applications.",
-        "3d printing creates physical objects from digital models. this technology is revolutionizing manufacturing, medicine and architecture."
+        "3d printing creates physical objects from digital models. this technology is revolutionizing manufacturing, medicine and architecture. 3d printing has become more accessible in recent years."
     ],
     medium: [
         "The Quick Brown Fox jumps over the lazy dog. This sentence contains EVERY letter of the alphabet. Testing your typing speed can help you improve your Productivity.",
@@ -689,10 +689,12 @@ function getRandomPassage() {
     // Adjust passage length based on test duration
     if (testDuration >= 300) { // 5 minutes
         // Double the passage length for 5 minute tests
-        selectedPassage = selectedPassage.repeat(2);
+        // Add space between repetitions to ensure proper spacing
+        selectedPassage = selectedPassage + " " + selectedPassage;
     } else if (testDuration >= 180) { // 3 minutes
         // Use 1.5x passage length for 3 minute tests
-        selectedPassage = selectedPassage + ' ' + selectedPassage.substring(0, selectedPassage.length / 2);
+        // Ensure there's a space between the original and the partial repeat
+        selectedPassage = selectedPassage + " " + selectedPassage.substring(0, selectedPassage.length / 2);
     } else if (testDuration <= 30) { // 30 seconds
         // Use shorter passage for 30 second tests
         selectedPassage = selectedPassage.substring(0, selectedPassage.length / 2);
