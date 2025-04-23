@@ -702,52 +702,71 @@ function getRandomPassage() {
     return selectedPassage;
 }
 
-// Format the passage text into individual character spans
+// Format passage to improve visibility on all screen sizes
 function formatPassage(passage) {
-    textDisplay.innerHTML = ''; // Clear previous text
+    if (!textDisplay) return;
     
-    // Track words instead of individual characters
-    const words = passage.split(/(\s+)/); // Split by whitespace but keep the whitespace
-    let lineDiv = document.createElement('div');
-    lineDiv.className = 'text-line';
-    textDisplay.appendChild(lineDiv);
-    
+    textDisplay.innerHTML = '';
     passageChars = [];
     
-    // Process each word as a unit
-    words.forEach(word => {
-        // Create a word container
-        const wordSpan = document.createElement('span');
-        wordSpan.className = 'word-unit';
-        
-        // Add space class for whitespace words
-        if (/^\s+$/.test(word)) {
-            wordSpan.classList.add('space');
-        }
-        
-        // Create individual character spans within the word
-        const chars = word.split('');
-        chars.forEach(char => {
-            const charSpan = document.createElement('span');
-            charSpan.textContent = char;
-            wordSpan.appendChild(charSpan);
-            passageChars.push(charSpan);
-        });
-        
-        // Add the word to the current line
-        lineDiv.appendChild(wordSpan);
-        
-        // Create a new line if we encounter a newline
-        if (word.includes('\n')) {
-            lineDiv = document.createElement('div');
-            lineDiv.className = 'text-line';
-            textDisplay.appendChild(lineDiv);
-        }
-    });
+    // Check if mobile view is needed
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        document.body.classList.add('mobile-view');
+    }
     
-    // Highlight the first character
-    if (passageChars.length > 0) {
-        passageChars[0].classList.add('current');
+    // Create each character as a span
+    for (let i = 0; i < passage.length; i++) {
+        const charSpan = document.createElement('span');
+        charSpan.textContent = passage[i];
+        
+        // First character is always the current one at start
+        if (i === 0) {
+            charSpan.classList.add('current');
+        }
+        
+        // Create word units to prevent words from breaking
+        if (passage[i] === ' ' && i > 0) {
+            // This is a space after a word
+            const wordUnit = document.createElement('span');
+            wordUnit.className = 'word-unit space';
+            wordUnit.appendChild(charSpan);
+            textDisplay.appendChild(wordUnit);
+        } else if (i > 0 && passage[i-1] === ' ') {
+            // This is the first character of a new word
+            const wordUnit = document.createElement('span');
+            wordUnit.className = 'word-unit';
+            wordUnit.appendChild(charSpan);
+            textDisplay.appendChild(wordUnit);
+        } else if (i === 0) {
+            // This is the first character of the passage
+            const wordUnit = document.createElement('span');
+            wordUnit.className = 'word-unit';
+            wordUnit.appendChild(charSpan);
+            textDisplay.appendChild(wordUnit);
+        } else {
+            // This is a character inside a word
+            const lastWordUnit = textDisplay.lastChild;
+            if (lastWordUnit) {
+                lastWordUnit.appendChild(charSpan);
+            } else {
+                // Fallback if no word unit exists yet
+                textDisplay.appendChild(charSpan);
+            }
+        }
+        
+        passageChars.push(charSpan);
+    }
+    
+    // Fix scrolling issues - especially for iOS
+    // Try multiple times to ensure it works
+    for (let i = 0; i < 3; i++) {
+        setTimeout(fixTextDisplayVisibility, 100 * (i + 1));
+    }
+    
+    // For very small screens, apply extreme mobile layout
+    if (window.innerWidth < 480) {
+        setTimeout(applyExtremeMobileLayout, 300);
     }
 }
 
@@ -1628,6 +1647,11 @@ function resetTest() {
         });
     }
 
+    // On mobile, reapply extreme layout for very small screens
+    if (window.innerWidth < 480) {
+        setTimeout(applyExtremeMobileLayout, 300);
+    }
+
     // Focus the input field to be ready
     textInput.focus();
 }
@@ -1790,43 +1814,43 @@ function handleInput(event) {
         }
     }
     
-    // Improved smooth scrolling for text display
-    if (currentCharElement) {
-        // Get the container dimensions
+    // Always center current character on small screens
+    if (currentCharElement && window.innerWidth <= 768) {
+        currentCharElement.scrollIntoView({
+            behavior: 'auto',
+            block: 'center'
+        });
+        
+        // For iOS and other mobile browsers, force proper positioning
+        document.body.classList.add('mobile-view');
+        setTimeout(fixTextDisplayVisibility, 50);
+    } else if (currentCharElement) {
+        // For larger screens, use smooth scrolling
         const container = textDisplay;
-        const containerRect = container.getBoundingClientRect();
-        
-        // Find the parent word-unit of the current character
-        const wordUnit = currentCharElement.closest('.word-unit');
-        
-        // Get positions
-        const elementRect = currentCharElement.getBoundingClientRect();
-        const wordRect = wordUnit ? wordUnit.getBoundingClientRect() : elementRect;
-        
-        // Calculate if element is near the edge of visible area
-        const isNearBottom = elementRect.bottom > containerRect.bottom - 50;
-        const isNearTop = elementRect.top < containerRect.top + 50;
-        
-        // Scroll only when approaching boundaries, not on every character
-        if (isNearBottom || isNearTop) {
-            // Calculate the center position to scroll to
-            const lineHeight = parseInt(window.getComputedStyle(currentCharElement).lineHeight) || 
-                               elementRect.height * 1.8;
+        if (container && container.offsetParent !== null) {
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = currentCharElement.getBoundingClientRect();
             
-            // Get the coordinates of the current element using word-unit if available
-            const elementTop = wordUnit ? wordUnit.offsetTop : currentCharElement.offsetTop;
+            // Ensure enough context is visible by keeping the cursor in the middle portion of the visible area
+            const idealPosition = containerRect.height * 0.4; // Position cursor at ~40% of visible area
             
-            // Create a buffer to keep text better positioned (show 2 lines above cursor)
-            const scrollBuffer = lineHeight * 2;
+            // Calculate if cursor is visible and not optimally positioned
+            const cursorOffsetFromTop = elementRect.top - containerRect.top;
+            const isNotOptimal = cursorOffsetFromTop < idealPosition || 
+                                cursorOffsetFromTop > containerRect.height - idealPosition;
             
-            // Scroll to position that keeps enough context visible
-            const scrollPosition = Math.max(0, elementTop - scrollBuffer);
-            
-            // Use smooth scrolling with a specific behavior for better performance
-            container.scrollTo({
-                top: scrollPosition,
-                behavior: 'smooth'
-            });
+            // Scroll when cursor isn't optimally positioned
+            if (isNotOptimal) {
+                // Calculate a better scroll position that places the cursor at the ideal position
+                const currentScrollTop = container.scrollTop;
+                const requiredScroll = currentScrollTop + (cursorOffsetFromTop - idealPosition);
+                
+                // Apply the smooth scroll to maintain context
+                container.scrollTo({
+                    top: requiredScroll,
+                    behavior: 'smooth'
+                });
+            }
         }
     }
     
@@ -3198,3 +3222,1042 @@ function resumeTimer() {
         }
     }
 }
+
+// Add this CSS adjustment to ensure text-display has a minimum height on small screens
+document.addEventListener('DOMContentLoaded', function() {
+    // Ensure text display has reasonable minimum height for small screens
+    const textDisplay = document.getElementById('text-display');
+    if (textDisplay) {
+        const adjustTextDisplayHeight = () => {
+            const viewportHeight = window.innerHeight;
+            const containerHeight = document.querySelector('.container').offsetHeight;
+            const minDisplayHeight = Math.max(150, viewportHeight * 0.3); // At least 30% of viewport or 150px
+            textDisplay.style.minHeight = minDisplayHeight + 'px';
+        };
+        
+        // Adjust on load and on resize
+        adjustTextDisplayHeight();
+        window.addEventListener('resize', adjustTextDisplayHeight);
+    }
+});
+
+// --- Event Listeners ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize elements
+    textDisplay = document.getElementById('text-display');
+    textInput = document.getElementById('text-input');
+    wpmEl = document.getElementById('wpm');
+    accuracyEl = document.getElementById('accuracy');
+    timerEl = document.getElementById('timer');
+    highScoreWpmEl = document.getElementById('high-score-wpm');
+    highScoreAccuracyEl = document.getElementById('high-score-accuracy');
+    restartBtn = document.getElementById('restart-btn');
+    virtualKeyboardEl = document.getElementById('virtual-keyboard');
+    currentStreakEl = document.getElementById('current-streak');
+    bestStreakEl = document.getElementById('best-streak');
+    
+    // Create mobile controls toggle for small screens
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        // Show the toggle that's already in the HTML (remove hidden class)
+        const mobileToggle = document.querySelector('.mobile-controls-toggle');
+        if (mobileToggle) {
+            mobileToggle.classList.remove('hidden');
+            mobileToggle.addEventListener('click', toggleMobileControls);
+        }
+        
+        // On mobile, simplify the interface
+        document.body.classList.add('mobile-view');
+        
+        // Apply extreme mobile layout for very small screens
+        if (window.innerWidth < 480) {
+            setTimeout(applyExtremeMobileLayout, 300);
+        }
+        
+        // Optimize display for small screens
+        if (textDisplay) {
+            textDisplay.style.fontSize = '1.5em';
+            textDisplay.style.lineHeight = '1.5';
+        }
+    }
+    
+    // Load saved data
+    loadUserData();
+    
+    // Initialize the performance chart
+    initializePerformanceChart();
+    
+    // Set event listeners for game controls
+    restartBtn.addEventListener('click', resetTest);
+    document.getElementById('toggle-theme-btn').addEventListener('click', toggleDarkMode);
+    document.getElementById('toggle-keyboard-btn').addEventListener('click', toggleKeyboard);
+    document.getElementById('toggle-stats-btn').addEventListener('click', toggleTypingHistory);
+    document.getElementById('toggle-live-stats-btn').addEventListener('click', toggleLiveStats);
+    document.getElementById('export-data-btn').addEventListener('click', exportUserData);
+    document.getElementById('import-data-btn').addEventListener('click', () => {
+        document.getElementById('import-file-input').click();
+    });
+    document.getElementById('import-file-input').addEventListener('change', (e) => {
+        importUserData(e.target.files[0]);
+    });
+    document.getElementById('reset-progress-btn').addEventListener('click', resetProgress);
+    
+    // Set text input event listeners
+    textInput.addEventListener('input', handleInput);
+    
+    // Add listeners for difficulty buttons
+    document.querySelectorAll('.difficulty-btn').forEach(button => {
+        button.addEventListener('click', handleDifficultyButtonClick);
+    });
+    
+    // Add listeners for time buttons
+    document.querySelectorAll('.time-btn').forEach(button => {
+        button.addEventListener('click', handleTimeButtonClick);
+    });
+
+    // Initialize rewards system
+    addRewardsButton();
+    checkForUnlockedRewards();
+    
+    // Apply the active theme
+    applyActiveThemeOnLoad();
+    
+    // Load initial random 
+    currentPassage = getRandomPassage();
+    formatPassage(currentPassage);
+    
+    // Add digital pet if unlocked
+    if (userData.level >= 15 && activeRewards.includes('digital_pet')) {
+        addDigitalPet();
+    }
+    
+    // Initialize typing sound effects
+    loadTypingSounds();
+    
+    // Focus the input to start typing with proper delays
+    setTimeout(() => {
+        // Fix scrolling position
+        fixTextDisplayVisibility();
+        
+        // For very small screens, apply extreme mobile layout
+        if (window.innerWidth < 480) {
+            setTimeout(applyExtremeMobileLayout, 300);
+        }
+        
+        // Focus the input with a delay to avoid mobile keyboard issues
+        setTimeout(() => {
+            textInput.focus();
+        }, 300);
+    }, 500);
+    
+    // Create history filters
+    createHistoryFilters();
+    
+    // Handle history filter changes
+    const filterSelect = document.querySelector('.filter-select');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', handleHistoryFilterChange);
+    }
+    
+    // Add touch/click event listeners to filter buttons
+    document.querySelectorAll('.filter-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const filter = e.target.dataset.filter;
+            filterTypingHistory(filter);
+            
+            // Update active class
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            e.target.classList.add('active');
+        });
+    });
+    
+    // Initialize prestige system
+    if (userData.hasOwnProperty('prestige') && userData.prestige > 0) {
+        // Update prestige indicator
+        const levelInfoEl = document.querySelector('.level-info');
+        if (levelInfoEl) {
+            const prestigeIndicator = document.createElement('div');
+            prestigeIndicator.className = 'prestige-indicator';
+            prestigeIndicator.innerHTML = `<span class="prestige-star">★</span> ${userData.prestige}`;
+            levelInfoEl.prepend(prestigeIndicator);
+        }
+    }
+    
+    // Add window resize event handler to adjust layout
+    window.addEventListener('resize', () => {
+        // Check viewport dimensions and adjust layout
+        const isMobile = window.innerWidth <= 768;
+        
+        if (isMobile) {
+            document.body.classList.add('mobile-view');
+            
+            // Apply extreme mobile layout for very small screens
+            if (window.innerWidth < 480) {
+                setTimeout(applyExtremeMobileLayout, 300);
+            }
+        } else {
+            document.body.classList.remove('mobile-view');
+            
+            // Make sure controls are visible on desktop
+            const controls = [
+                '.stats-container',
+                '.progression',
+                '.options-container',
+                '.keyboard-toggle',
+                '.stats-toggle'
+            ];
+            
+            controls.forEach(selector => {
+                const element = document.querySelector(selector);
+                if (element) element.classList.remove('hidden');
+            });
+        }
+        
+        // Fix visibility issues when viewport changes
+        setTimeout(fixTextDisplayVisibility, 100);
+    });
+        
+    // This helps with focus issues on mobile
+    textDisplay.addEventListener('click', ensureInputFocus);
+    
+    // For iOS Safari, detect when virtual keyboard might appear
+    let lastWindowHeight = window.innerHeight;
+    window.addEventListener('resize', () => {
+        // If the height reduced significantly, virtual keyboard likely appeared
+        const newWindowHeight = window.innerHeight;
+        if (lastWindowHeight > newWindowHeight + 100) {
+            // Keyboard appeared - adjust scrolling
+            setTimeout(fixTextDisplayVisibility, 50);
+        } else if (newWindowHeight > lastWindowHeight + 100) {
+            // Keyboard disappeared - adjust scrolling
+            setTimeout(fixTextDisplayVisibility, 50);
+        }
+        lastWindowHeight = newWindowHeight;
+    });
+    
+    // For better iOS support
+    window.addEventListener('orientationchange', () => {
+        setTimeout(fixTextDisplayVisibility, 300);
+    });
+    
+    // Handle page visibility changes (when user tabs away and comes back)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            setTimeout(fixTextDisplayVisibility, 100);
+        }
+    });
+    
+    // For better mobile experience, check if the page loads with a small viewport
+    if (window.innerWidth <= 768) {
+        // Scroll to top to ensure text display is visible
+        window.scrollTo(0, 0);
+        
+        // Try to focus and fix several times to handle mobile browser quirks
+        for (let i = 0; i < 5; i++) {
+            setTimeout(fixTextDisplayVisibility, 100 * (i + 1));
+        }
+    }
+});
+
+// Add this function to toggle mobile controls visibility
+function toggleMobileControls() {
+    // Check if mobile panel exists, if not create it
+    let mobilePanel = document.querySelector('.mobile-controls-panel');
+    
+    if (!mobilePanel) {
+        // Create a floating controls panel for mobile
+        mobilePanel = document.createElement('div');
+        mobilePanel.className = 'mobile-controls-panel hidden';
+        
+        // Move/clone essential controls to this panel
+        const statsContainer = document.querySelector('.stats-container')?.cloneNode(true);
+        const progression = document.querySelector('.progression')?.cloneNode(true);
+        const optionsContainer = document.querySelector('.options-container')?.cloneNode(true);
+        const controlButtons = document.querySelector('.control-buttons')?.cloneNode(true);
+        
+        // Add elements to panel if they exist
+        if (statsContainer) mobilePanel.appendChild(statsContainer);
+        if (progression) mobilePanel.appendChild(progression);
+        if (optionsContainer) mobilePanel.appendChild(optionsContainer);
+        if (controlButtons) mobilePanel.appendChild(controlButtons);
+        
+        // Add close button to panel
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'close-mobile-panel';
+        closeBtn.innerHTML = '<i class="fa-solid fa-times"></i>';
+        closeBtn.addEventListener('click', toggleMobileControls);
+        mobilePanel.appendChild(closeBtn);
+        
+        // Add to document
+        document.body.appendChild(mobilePanel);
+        
+        // Ensure the panel has proper event listeners
+        if (optionsContainer) {
+            const difficultyBtns = mobilePanel.querySelectorAll('.difficulty-btn');
+            difficultyBtns.forEach(btn => {
+                btn.addEventListener('click', handleDifficultyButtonClick);
+            });
+            
+            const timeBtns = mobilePanel.querySelectorAll('.time-btn');
+            timeBtns.forEach(btn => {
+                btn.addEventListener('click', handleTimeButtonClick);
+            });
+        }
+        
+        if (controlButtons) {
+            const restartBtn = mobilePanel.querySelector('#restart-btn');
+            if (restartBtn) {
+                restartBtn.addEventListener('click', resetTest);
+            }
+            
+            const themeBtn = mobilePanel.querySelector('#toggle-theme-btn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', toggleDarkMode);
+            }
+        }
+    }
+    
+    // Toggle panel visibility
+    mobilePanel.classList.toggle('hidden');
+    
+    // Update toggle button text
+    const button = document.querySelector('.mobile-controls-toggle');
+    if (button) {
+        if (mobilePanel.classList.contains('hidden')) {
+            button.innerHTML = '<i class="fa-solid fa-sliders"></i> Show Controls';
+        } else {
+            button.innerHTML = '<i class="fa-solid fa-times"></i> Hide Controls';
+        }
+    }
+    
+    // Make sure the text input stays focused
+    setTimeout(() => {
+        const textInput = document.getElementById('text-input');
+        if (textInput) textInput.focus();
+    }, 100);
+}
+
+// Ensure text input is properly focused when typing area is clicked
+function ensureInputFocus() {
+    // Refocus the input
+    textInput.focus();
+    
+    // On mobile devices, scroll to keep text display visible
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        document.body.classList.add('mobile-view');
+        
+        // Force document scroll to top
+        window.scrollTo(0, 0);
+        
+        // For very small screens, apply extreme mobile layout
+        if (window.innerWidth < 480) {
+            applyExtremeMobileLayout();
+            return;
+        }
+        
+        // Ensure the text display is visible
+        const textDisplay = document.getElementById('text-display');
+        if (textDisplay) {
+            // Find current character
+            const currentChar = textDisplay.querySelector('.current');
+            if (currentChar) {
+                // Scroll to current character
+                setTimeout(() => {
+                    currentChar.scrollIntoView({
+                        behavior: 'auto',
+                        block: 'center'
+                    });
+                }, 50);
+            }
+        }
+    }
+}
+
+// Make sure the text display is always visible and properly positioned on small screens
+function fixTextDisplayVisibility() {
+    const textDisplay = document.getElementById('text-display');
+    if (!textDisplay) return;
+    
+    // Force mobile view on small screens
+    if (window.innerWidth <= 768) {
+        // Check if we should apply extreme mobile layout for very small screens
+        if (window.innerWidth < 480) {
+            applyExtremeMobileLayout();
+            return;
+        }
+        
+        document.body.classList.add('mobile-view');
+        
+        // Force the text display to be fully visible
+        textDisplay.style.display = 'block';
+        
+        // Ensure no scrolling at container level
+        const container = document.querySelector('.container');
+        if (container) {
+            container.scrollTop = 0;
+        }
+        
+        // Force document scroll to top
+        window.scrollTo(0, 0);
+        
+        // Set explicit height to ensure visibility
+        textDisplay.style.height = '50vh';
+        
+        // Ensure any current character is visible
+        const currentChar = textDisplay.querySelector('.current');
+        if (currentChar) {
+            setTimeout(() => {
+                currentChar.scrollIntoView({ 
+                    behavior: 'auto', 
+                    block: 'center'
+                });
+            }, 50);
+        }
+        
+        // Focus the input with a slight delay
+        const textInput = document.getElementById('text-input');
+        if (textInput) {
+            setTimeout(() => {
+                textInput.focus();
+            }, 100);
+        }
+        
+        // Hide all non-essential elements
+        const elementsToHide = [
+            '.stats-container', 
+            '.progression',
+            '.options-container',
+            '.keyboard-toggle', 
+            '.stats-toggle',
+            '.typing-history',
+            '.live-stats-toggle',
+            '.data-transfer-buttons',
+            '.ad-placeholder'
+        ];
+        
+        elementsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+        
+        // Make sure mobile controls toggle is visible
+        const mobileToggle = document.querySelector('.mobile-controls-toggle');
+        if (mobileToggle) {
+            mobileToggle.style.display = 'block';
+            mobileToggle.classList.remove('hidden');
+        }
+    }
+}
+
+// Function to apply extreme mobile layout for very small screens
+function applyExtremeMobileLayout() {
+    // Force text display visibility
+    const textDisplay = document.getElementById('text-display');
+    if (!textDisplay) return;
+    
+    // Apply visibility styles
+    textDisplay.style.display = 'block';
+    textDisplay.style.position = 'fixed';
+    textDisplay.style.top = '0';
+    textDisplay.style.left = '0';
+    textDisplay.style.right = '0';
+    textDisplay.style.width = '100%';
+    textDisplay.style.height = '85vh';
+    textDisplay.style.zIndex = '1000';
+    textDisplay.style.margin = '0';
+    textDisplay.style.padding = '15px';
+    textDisplay.style.borderRadius = '0';
+    textDisplay.style.fontSize = '1.4em';
+    
+    // Hide all other elements in container
+    const container = document.querySelector('.container');
+    if (container) {
+        container.style.display = 'block';
+        container.style.padding = '0';
+        container.style.margin = '0';
+        container.style.width = '100%';
+        container.style.maxWidth = 'none';
+        container.style.borderRadius = '0';
+        container.style.boxShadow = 'none';
+        
+        Array.from(container.children).forEach(child => {
+            if (child.id !== 'text-display' && !child.classList.contains('control-buttons') && 
+                !child.classList.contains('mobile-controls-toggle')) {
+                child.style.display = 'none';
+            }
+        });
+    }
+    
+    // Make sure mobile controls toggle is visible and positioned properly
+    const mobileToggle = document.querySelector('.mobile-controls-toggle');
+    if (mobileToggle) {
+        mobileToggle.style.display = 'block';
+        mobileToggle.style.position = 'fixed';
+        mobileToggle.style.bottom = '10px';
+        mobileToggle.style.right = '10px';
+        mobileToggle.style.zIndex = '2000';
+        mobileToggle.style.padding = '10px 15px';
+        mobileToggle.style.borderRadius = '50px';
+        mobileToggle.style.backgroundColor = '#3498db';
+        mobileToggle.style.color = '#fff';
+        mobileToggle.style.border = 'none';
+        mobileToggle.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        mobileToggle.classList.remove('hidden');
+    }
+    
+    // Show minimal control buttons
+    const controlButtons = document.querySelector('.control-buttons');
+    if (controlButtons) {
+        controlButtons.style.display = 'block';
+        controlButtons.style.position = 'fixed';
+        controlButtons.style.bottom = '0';
+        controlButtons.style.left = '0';
+        controlButtons.style.width = '50%';
+        controlButtons.style.padding = '10px';
+        controlButtons.style.zIndex = '1000';
+        controlButtons.style.backgroundColor = '#fff';
+        controlButtons.style.textAlign = 'center';
+        
+        // Find restart button
+        const restartBtn = document.getElementById('restart-btn');
+        if (restartBtn) {
+            restartBtn.style.display = 'inline-block';
+            restartBtn.style.width = '100%';
+            restartBtn.style.padding = '10px';
+            restartBtn.style.backgroundColor = '#3498db';
+            restartBtn.style.color = '#fff';
+            restartBtn.style.border = 'none';
+            restartBtn.style.borderRadius = '5px';
+        }
+        
+        // Hide theme button
+        const themeBtn = document.getElementById('toggle-theme-btn');
+        if (themeBtn) {
+            themeBtn.style.display = 'none';
+        }
+    }
+    
+    // Apply dark mode styles if needed
+    if (document.body.classList.contains('dark-mode')) {
+        if (textDisplay) {
+            textDisplay.style.backgroundColor = '#1e293b';
+        }
+        if (controlButtons) {
+            controlButtons.style.backgroundColor = '#252538';
+        }
+        if (mobileToggle) {
+            mobileToggle.style.backgroundColor = '#4b5563';
+        }
+    }
+    
+    // Focus input
+    const textInput = document.getElementById('text-input');
+    if (textInput) {
+        setTimeout(() => textInput.focus(), 100);
+    }
+    
+    // Make sure any current character is visible
+    const currentChar = textDisplay.querySelector('.current');
+    if (currentChar) {
+        currentChar.style.backgroundColor = '#3498db';
+        currentChar.style.color = 'white';
+        currentChar.style.padding = '0 3px';
+        currentChar.style.fontWeight = 'bold';
+        currentChar.style.borderRadius = '3px';
+        
+        setTimeout(() => {
+            currentChar.scrollIntoView({
+                behavior: 'auto',
+                block: 'center'
+            });
+        }, 150);
+    }
+    
+    // Force scroll to top
+    window.scrollTo(0, 0);
+}
+
+// Function to ensure the input field is focused
+function ensureInputFocus() {
+    const textInput = document.getElementById('text-input');
+    if (textInput && document.activeElement !== textInput) {
+        textInput.focus();
+    }
+}
+
+// Detect iOS devices specifically
+function isIOS() {
+    return [
+        'iPad Simulator',
+        'iPhone Simulator',
+        'iPod Simulator',
+        'iPad',
+        'iPhone',
+        'iPod'
+    ].includes(navigator.platform) || 
+    (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+}
+
+// Apply iOS-specific fixes if needed
+if (isIOS()) {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Add special iOS class
+        document.body.classList.add('ios-device');
+        
+        // Add extra handling for iOS keyboard issues
+        const textInput = document.getElementById('text-input');
+        if (textInput) {
+            textInput.addEventListener('focus', () => {
+                setTimeout(fixTextDisplayVisibility, 300);
+                if (window.innerWidth < 480) {
+                    setTimeout(applyExtremeMobileLayout, 300);
+                }
+            });
+            
+            textInput.addEventListener('blur', () => {
+                setTimeout(fixTextDisplayVisibility, 300);
+                if (window.innerWidth < 480) {
+                    setTimeout(applyExtremeMobileLayout, 300);
+                }
+            });
+        }
+    });
+}
+
+// Initialize when the page is fully loaded
+window.onload = function() {
+    // Load user data from localStorage
+    loadUserData();
+    
+    // Setup event listeners for typing input
+    textInput.addEventListener('input', handleInput);
+    textInput.addEventListener('focus', ensureInputFocus);
+    textInput.addEventListener('blur', () => setTimeout(ensureInputFocus, 100));
+    
+    // Get a random text passage based on difficulty level
+    getRandomPassage();
+    
+    // Start with timer paused until user begins typing
+    isPaused = true;
+    
+    // Initialize the chart for typing history
+    initializePerformanceChart();
+    
+    // Set up event listeners for control buttons
+    const resetBtn = document.getElementById('restart-btn');
+    resetBtn.addEventListener('click', resetTest);
+    
+    const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+    toggleThemeBtn.addEventListener('click', toggleDarkMode);
+    
+    const toggleKeyboardBtn = document.getElementById('toggle-keyboard-btn');
+    toggleKeyboardBtn.addEventListener('click', toggleKeyboard);
+    
+    const toggleStatsBtn = document.getElementById('toggle-stats-btn');
+    toggleStatsBtn.addEventListener('click', toggleTypingHistory);
+    
+    const toggleLiveStatsBtn = document.getElementById('toggle-live-stats-btn');
+    toggleLiveStatsBtn.addEventListener('click', toggleLiveStats);
+    
+    const exportDataBtn = document.getElementById('export-data-btn');
+    exportDataBtn.addEventListener('click', exportUserData);
+    
+    const importDataBtn = document.getElementById('import-data-btn');
+    importDataBtn.addEventListener('click', () => {
+        document.getElementById('import-file-input').click();
+    });
+    
+    const importFileInput = document.getElementById('import-file-input');
+    importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            importUserData(file);
+        }
+    });
+    
+    const resetProgressBtn = document.getElementById('reset-progress-btn');
+    resetProgressBtn.addEventListener('click', resetProgress);
+    
+    // Set up event listeners for difficulty and time buttons
+    const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+    difficultyButtons.forEach(button => {
+        button.addEventListener('click', handleDifficultyButtonClick);
+    });
+    
+    const timeButtons = document.querySelectorAll('.time-btn');
+    timeButtons.forEach(button => {
+        button.addEventListener('click', handleTimeButtonClick);
+    });
+    
+    // Apply the appropriate layout based on window width
+    const width = window.innerWidth;
+    
+    if (width > 900) {
+        // Standard layout for wide screens
+        resetLayoutStyles();
+    } else if (width <= 900 && width > 768) {
+        // Condensed desktop layout for narrow desktop windows
+        checkCondensedLayout();
+    } else if (width <= 768) {
+        // Mobile layout for very narrow screens or mobile devices
+        document.body.classList.add('mobile-view');
+        
+        // Make sure the mobile toggle button is visible
+        const mobileToggle = document.querySelector('.mobile-controls-toggle');
+        if (mobileToggle) {
+            mobileToggle.classList.remove('hidden');
+            mobileToggle.addEventListener('click', toggleMobileControls);
+        }
+        
+        // For very small screens apply extreme layout
+        if (width < 480) {
+            setTimeout(applyExtremeMobileLayout, 300);
+        }
+    }
+    
+    // Set up resize handler
+    window.addEventListener('resize', handleWindowResize);
+    
+    // Apply text display height adjustment
+    adjustTextDisplayHeight();
+    
+    // Apply active theme on page load
+    applyActiveThemeOnLoad();
+    
+    // For iOS and other mobile browsers with specific needs
+    if (isIOS()) {
+        document.body.classList.add('ios-device');
+        fixTextDisplayVisibility();
+    }
+    
+    // Ensure input has focus
+    setTimeout(ensureInputFocus, 500);
+};
+
+// Handle window resize events
+function handleWindowResize() {
+    const width = window.innerWidth;
+    
+    // Apply the right layout based on screen width
+    if (width > 900) {
+        // Default layout for wide screens
+        resetLayoutStyles();
+    } else if (width <= 900 && width > 768) {
+        // Condensed desktop layout
+        resetMobileStyles(); // Clear any mobile styles
+        checkCondensedLayout(); // Apply condensed layout
+        document.body.classList.remove('mobile-view');
+    } else if (width <= 768) {
+        // Mobile layout
+        document.body.classList.add('mobile-view');
+        
+        // Make sure the mobile toggle is visible
+        const mobileToggle = document.querySelector('.mobile-controls-toggle');
+        if (mobileToggle) {
+            mobileToggle.classList.remove('hidden');
+            if (!mobileToggle.hasEventListener) {
+                mobileToggle.addEventListener('click', toggleMobileControls);
+                mobileToggle.hasEventListener = true;
+            }
+        }
+        
+        // For very small screens apply extreme layout
+        if (width < 480) {
+            setTimeout(applyExtremeMobileLayout, 300);
+        }
+    }
+    
+    // Always ensure text is visible
+    fixTextDisplayVisibility();
+    
+    // Update text display height
+    adjustTextDisplayHeight();
+}
+
+// Function to adjust text display height
+function adjustTextDisplayHeight() {
+    const textDisplay = document.getElementById('text-display');
+    if (textDisplay) {
+        const viewportHeight = window.innerHeight;
+        const minHeight = Math.max(viewportHeight * 0.4, 200); // At least 40% of viewport or 200px
+        textDisplay.style.minHeight = `${minHeight}px`;
+    }
+}
+
+// New function to reset inline styles applied by mobile layout
+function resetMobileStyles() {
+    // Reset text display styles
+    const textDisplay = document.getElementById('text-display');
+    if (textDisplay) {
+        textDisplay.style.position = '';
+        textDisplay.style.top = '';
+        textDisplay.style.left = '';
+        textDisplay.style.right = '';
+        textDisplay.style.width = '';
+        textDisplay.style.height = '';
+        textDisplay.style.zIndex = '';
+        textDisplay.style.margin = '';
+        textDisplay.style.padding = '';
+        textDisplay.style.borderRadius = '';
+        textDisplay.style.fontSize = '';
+    }
+    
+    // Reset container styles
+    const container = document.querySelector('.container');
+    if (container) {
+        container.style.display = '';
+        container.style.padding = '';
+        container.style.margin = '';
+        container.style.width = '';
+        container.style.maxWidth = '';
+        container.style.borderRadius = '';
+        container.style.boxShadow = '';
+    }
+    
+    // Reset control buttons
+    const controlButtons = document.querySelector('.control-buttons');
+    if (controlButtons) {
+        controlButtons.style.display = '';
+        controlButtons.style.position = '';
+        controlButtons.style.bottom = '';
+        controlButtons.style.left = '';
+        controlButtons.style.right = '';
+        controlButtons.style.width = '';
+        controlButtons.style.padding = '';
+        controlButtons.style.zIndex = '';
+        controlButtons.style.backgroundColor = '';
+        controlButtons.style.textAlign = '';
+    }
+    
+    // Show all elements that were hidden
+    const elementsToShow = [
+        '.stats-container', 
+        '.progression',
+        '.options-container',
+        '.keyboard-toggle', 
+        '.stats-toggle',
+        '.typing-history',
+        '.live-stats-toggle',
+        '.data-transfer-buttons'
+    ];
+    
+    elementsToShow.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            el.style.display = '';
+        });
+    });
+}
+
+// Add function to toggle controls for condensed desktop view
+function toggleCondensedControls() {
+    const container = document.querySelector('.container');
+    container.classList.toggle('show-controls');
+    
+    const toggleButton = document.querySelector('.condensed-toggle');
+    if (toggleButton) {
+        if (container.classList.contains('show-controls')) {
+            toggleButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i> Hide Controls';
+        } else {
+            toggleButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show Controls';
+        }
+    }
+}
+
+// Function to check and apply condensed layout for desktop
+function checkCondensedLayout() {
+    const width = window.innerWidth;
+    const container = document.querySelector('.container');
+    
+    // Only apply this for desktop-sized windows that are narrow
+    if (width <= 600) {
+        // Check if we already have a toggle button
+        let toggleButton = document.querySelector('.condensed-toggle');
+        
+        // If not, create one
+        if (!toggleButton) {
+            toggleButton = document.createElement('button');
+            toggleButton.className = 'condensed-toggle';
+            toggleButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Show Controls';
+            toggleButton.addEventListener('click', toggleCondensedControls);
+            
+            // Add after control buttons
+            const controlButtons = document.querySelector('.control-buttons');
+            if (controlButtons && controlButtons.parentNode) {
+                controlButtons.parentNode.insertBefore(toggleButton, controlButtons.nextSibling);
+            } else {
+                container.appendChild(toggleButton);
+            }
+        }
+    } else {
+        // Remove the toggle button if window is wider
+        const toggleButton = document.querySelector('.condensed-toggle');
+        if (toggleButton) {
+            toggleButton.remove();
+        }
+        
+        // Remove show-controls class if exists
+        container.classList.remove('show-controls');
+        
+        // Ensure all elements are visible
+        const elements = [
+            '.stats-container',
+            '.progression',
+            '.options-container',
+            '.data-transfer-buttons',
+            '.keyboard-toggle',
+            '.stats-toggle',
+            '.live-stats-toggle'
+        ];
+        
+        elements.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.style.display = '';
+            }
+        });
+    }
+}
+
+// Add this to window.onload
+window.addEventListener('load', function() {
+    // Check for condensed layout
+    checkCondensedLayout();
+    
+    // Check on resize
+    window.addEventListener('resize', function() {
+        checkCondensedLayout();
+    });
+    
+    // ... existing code ...
+});
+
+// New function to reset layout styles
+function resetLayoutStyles() {
+    // Reset any inline styles from mobile or condensed layouts
+    const textDisplay = document.getElementById('text-display');
+    if (textDisplay) {
+        textDisplay.style.position = '';
+        textDisplay.style.top = '';
+        textDisplay.style.left = '';
+        textDisplay.style.right = '';
+        textDisplay.style.width = '';
+        textDisplay.style.height = '';
+        textDisplay.style.zIndex = '';
+        textDisplay.style.margin = '';
+        textDisplay.style.padding = '';
+        textDisplay.style.borderRadius = '';
+        textDisplay.style.fontSize = '';
+        textDisplay.style.backgroundColor = '';
+    }
+    
+    // Reset container styles
+    const container = document.querySelector('.container');
+    if (container) {
+        container.style.display = '';
+        container.style.padding = '';
+        container.style.margin = '';
+        container.style.width = '';
+        container.style.maxWidth = '';
+        container.style.borderRadius = '';
+        container.style.boxShadow = '';
+        
+        // Remove any layout classes
+        container.classList.remove('show-controls');
+    }
+    
+    // Reset control buttons
+    const controlButtons = document.querySelector('.control-buttons');
+    if (controlButtons) {
+        controlButtons.style.display = '';
+        controlButtons.style.position = '';
+        controlButtons.style.bottom = '';
+        controlButtons.style.left = '';
+        controlButtons.style.right = '';
+        controlButtons.style.width = '';
+        controlButtons.style.padding = '';
+        controlButtons.style.zIndex = '';
+        controlButtons.style.backgroundColor = '';
+        controlButtons.style.textAlign = '';
+    }
+    
+    // Ensure all elements are visible with default styles
+    const elementsToReset = [
+        '.stats-container', 
+        '.progression',
+        '.options-container',
+        '.keyboard-toggle', 
+        '.stats-toggle',
+        '.typing-history',
+        '.live-stats-toggle',
+        '.data-transfer-buttons'
+    ];
+    
+    elementsToReset.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            el.style.display = '';
+        });
+    });
+    
+    // Remove any mobile or desktop layout toggle buttons
+    const mobileToggle = document.querySelector('.mobile-controls-toggle');
+    if (mobileToggle) {
+        mobileToggle.classList.add('hidden');
+    }
+    
+    const condensedToggle = document.querySelector('.condensed-toggle');
+    if (condensedToggle) {
+        condensedToggle.remove();
+    }
+    
+    // Remove mobile view class if present
+    document.body.classList.remove('mobile-view');
+}
+
+// Update the window resize event
+window.addEventListener('resize', function() {
+    const width = window.innerWidth;
+    
+    // Apply the right layout based on screen width
+    if (width > 900) {
+        // Default layout for wide screens
+        resetLayoutStyles();
+    } else if (width <= 900 && width > 768) {
+        // Condensed desktop layout
+        resetMobileStyles(); // Clear any mobile styles
+        checkCondensedLayout(); // Apply condensed layout
+        document.body.classList.remove('mobile-view');
+    } else if (width <= 768) {
+        // Mobile layout
+        document.body.classList.add('mobile-view');
+        
+        // Make sure the mobile toggle is visible
+        const mobileToggle = document.querySelector('.mobile-controls-toggle');
+        if (mobileToggle) {
+            mobileToggle.classList.remove('hidden');
+        }
+        
+        // For very small screens apply extreme layout
+        if (width < 480) {
+            setTimeout(applyExtremeMobileLayout, 300);
+        }
+    }
+    
+    // Always ensure text is visible
+    fixTextDisplayVisibility();
+    
+    // Update text display height
+    const textDisplay = document.getElementById('text-display');
+    if (textDisplay) {
+        const viewportHeight = window.innerHeight;
+        const minHeight = Math.max(viewportHeight * 0.5, 200);
+        textDisplay.style.minHeight = `${minHeight}px`;
+    }
+});
