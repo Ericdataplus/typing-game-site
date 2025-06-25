@@ -293,5 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initial Load ---
     loadUserData();
-    resetTest();
+    // Delay initial test setup to ensure DOM is fully ready for focus
+    setTimeout(resetTest, 100);
 });
