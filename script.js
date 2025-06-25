@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const hideResults = () => {
         resultsOverlay.classList.remove('visible');
-        textInput.focus();
+        setTimeout(() => textInput.focus(), 0);
     };
 
     const toggleTheme = () => {
