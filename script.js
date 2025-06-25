@@ -245,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleTheme = () => {
         document.body.classList.toggle('dark-mode');
         localStorage.setItem('typingGameDarkMode', document.body.classList.contains('dark-mode'));
+        textInput.focus();
     };
 
     // --- Event Listeners ---
