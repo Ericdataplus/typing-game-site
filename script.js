@@ -153,8 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         passageChars.forEach(span => span.classList.remove('current'));
 
+        let currentElement;
         if (currentIndex + 1 < passageChars.length) {
-            passageChars[currentIndex + 1].classList.add('current');
+            currentElement = passageChars[currentIndex + 1];
+            currentElement.classList.add('current');
+        }
+
+        // Scroll current character into view
+        if (currentElement) {
+            currentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         if (lastChar === targetChar) {
@@ -245,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleTheme = () => {
         document.body.classList.toggle('dark-mode');
         localStorage.setItem('typingGameDarkMode', document.body.classList.contains('dark-mode'));
-        textInput.focus();
+        setTimeout(() => textInput.focus(), 0);
     };
 
     // --- Event Listeners ---
