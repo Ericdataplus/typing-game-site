@@ -286,6 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toggleThemeBtn.addEventListener('click', toggleTheme);
 
+    document.getElementById('text-display-card').addEventListener('click', () => {
+        textInput.focus();
+    });
+
     // --- Initial Load ---
     loadUserData();
     resetTest();

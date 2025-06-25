@@ -85,7 +85,9 @@ header h1 {
     transition: var(--transition);
 }
 
-/* --- Text Display Area --- */
+#text-display-card {
+    cursor: text;
+}
 #text-display {
     font-size: 2em;
     line-height: 1.7;
