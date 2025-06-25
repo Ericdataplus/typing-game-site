@@ -5,154 +5,96 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Typing Test</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/your-fontawesome-kit.js" crossorigin="anonymous"></script> <!-- Replace with your kit -->
 </head>
 <body>
     <div class="container">
-        <h1>Typing Speed Test</h1>
-
-        <!-- Placeholder for potential top ad -->
-        <div class="ad-placeholder">Ad Placeholder Top</div>
-
-        <div class="stats-container">
-            <div class="stats">
-                <div>Time Left: <span id="timer">180</span>s</div>
-                <div class="live-stat">WPM: <span id="wpm">0</span></div>
-                <div class="live-stat">Accuracy: <span id="accuracy">100</span>%</div>
-                <div class="streak-counter">Streak: <span id="current-streak">0</span> <i class="fa-solid fa-fire"></i></div>
+        <header>
+            <h1>Typing Test</h1>
+            <div class="header-controls">
+                <button id="toggle-theme-btn" class="btn">Toggle Dark Mode</button>
             </div>
-            
-            <div class="high-scores">
-                <div>High WPM: <span id="high-score-wpm">0</span></div>
-                <div>Best Accuracy: <span id="high-score-accuracy">0</span>%</div>
-                <div>Best Streak: <span id="best-streak">0</span> <i class="fa-solid fa-trophy"></i></div>
+        </header>
+
+        <div id="text-display-card" class="card">
+            <div id="text-display">Loading text...</div>
+        </div>
+
+        <div class="stats-progression-grid">
+            <div class="card stat-item">
+                <h3>WPM</h3>
+                <p id="wpm" class="stat-value">0</p>
             </div>
-        </div>
-        
-        <div class="data-transfer-buttons">
-            <button id="export-data-btn" title="Export your progress as a file">
-                <i class="fa-solid fa-download"></i> Export Progress
-            </button>
-            <button id="import-data-btn" title="Import your progress from a file">
-                <i class="fa-solid fa-upload"></i> Import Progress
-            </button>
-            <input type="file" id="import-file-input" accept=".json" class="hidden">
-        </div>
-        
-        <div class="live-stats-toggle">
-            <button id="toggle-live-stats-btn" title="Hide live WPM and accuracy tracking">
-                <i class="fa-solid fa-eye-slash"></i> Hide Live Stats
-            </button>
-        </div>
-        
-        <div class="progression">
-            <div class="level-info">
-                <span>Level: <span id="level">1</span></span>
-                <div class="experience-bar">
-                    <div class="exp-progress"></div>
+            <div class="card stat-item">
+                <h3>Accuracy</h3>
+                <p id="accuracy" class="stat-value">100%</p>
+            </div>
+            <div class="card stat-item">
+                <h3>Timer</h3>
+                <p id="timer" class="stat-value">180s</p>
+            </div>
+            <div class="card progress-item">
+                <h3>Level <span id="level">1</span></h3>
+                <div class="progress-bar-container">
+                    <div id="exp-progress" class="progress-bar"></div>
                 </div>
-                <span class="exp-text"><span id="experience">0/100</span> XP</span>
-                <button id="reset-progress-btn" title="Reset all progress and start fresh" class="reset-btn">
-                    <i class="fa-solid fa-arrow-rotate-left"></i>
-                </button>
             </div>
         </div>
 
-        <div class="options-container">
-            <div class="time-options">
-                <span>Test Duration: </span>
-                <button class="time-btn" data-time="30">30s</button>
-                <button class="time-btn" data-time="60">1m</button>
-                <button class="time-btn active" data-time="180">3m</button>
-                <button class="time-btn" data-time="300">5m</button>
+        <div class="card settings-grid">
+            <div class="setting-group">
+                <label for="time-options">Duration</label>
+                <div id="time-options" class="btn-group">
+                    <button class="btn time-btn" data-time="30">30s</button>
+                    <button class="btn time-btn" data-time="60">1m</button>
+                    <button class="btn time-btn active" data-time="180">3m</button>
+                    <button class="btn time-btn" data-time="300">5m</button>
+                </div>
             </div>
-            
-            <div class="difficulty-options">
-                <span>Difficulty: </span>
-                <button class="difficulty-btn active" data-difficulty="easy">Easy</button>
-                <button class="difficulty-btn" data-difficulty="medium">Medium</button>
-                <button class="difficulty-btn" data-difficulty="hard">Hard</button>
+            <div class="setting-group">
+                <label for="difficulty-options">Difficulty</label>
+                <div id="difficulty-options" class="btn-group">
+                    <button class="btn difficulty-btn active" data-difficulty="easy">Easy</button>
+                    <button class="btn difficulty-btn" data-difficulty="medium">Medium</button>
+                    <button class="btn difficulty-btn" data-difficulty="hard">Hard</button>
+                </div>
             </div>
         </div>
-        
-        <!-- Text display area - prioritized on mobile -->
-        <div id="text-display" class="text-display-area">
-            <!-- Text passage will be loaded here by JavaScript -->
-            Loading text...
-        </div>
-        
-        <!-- Mobile controls toggle (visible on small screens) -->
-        <button class="mobile-controls-toggle hidden">
-            <i class="fa-solid fa-sliders"></i> Show Controls
-        </button>
 
-        <!-- Hidden input field to capture typing -->
+        <div class="main-actions">
+            <button id="restart-btn" class="action-btn">Restart Test</button>
+        </div>
+
         <input type="text" id="text-input" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
 
-        <div class="control-buttons">
-            <button id="restart-btn">Restart Test</button>
-            <button id="toggle-theme-btn">Toggle Dark Mode</button>
-        </div>
-
-        <!-- Virtual keyboard display -->
-        <div class="keyboard-toggle">
-            <button id="toggle-keyboard-btn">Show Keyboard</button>
-        </div>
-        
-        <div id="virtual-keyboard" class="virtual-keyboard hidden">
-            <div class="keyboard-row">
-                <div class="key" data-key="q">q</div>
-                <div class="key" data-key="w">w</div>
-                <div class="key" data-key="e">e</div>
-                <div class="key" data-key="r">r</div>
-                <div class="key" data-key="t">t</div>
-                <div class="key" data-key="y">y</div>
-                <div class="key" data-key="u">u</div>
-                <div class="key" data-key="i">i</div>
-                <div class="key" data-key="o">o</div>
-                <div class="key" data-key="p">p</div>
+    <!-- Results Modal -->
+    <div id="results-overlay" class="results-overlay">
+        <div class="results-content">
+            <h2>Test Complete!</h2>
+            <div class="results-grid">
+                <div class="result-item">
+                    <h3>WPM</h3>
+                    <p id="result-wpm">0</p>
+                </div>
+                <div class="result-item">
+                    <h3>Accuracy</h3>
+                    <p id="result-accuracy">100%</p>
+                </div>
+                <div class="result-item">
+                    <h3>Streak</h3>
+                    <p id="result-streak">0</p>
+                </div>
+                <div class="result-item">
+                    <h3>XP Gained</h3>
+                    <p id="result-xp">+0</p>
+                </div>
             </div>
-            <div class="keyboard-row">
-                <div class="key" data-key="a">a</div>
-                <div class="key" data-key="s">s</div>
-                <div class="key" data-key="d">d</div>
-                <div class="key" data-key="f">f</div>
-                <div class="key" data-key="g">g</div>
-                <div class="key" data-key="h">h</div>
-                <div class="key" data-key="j">j</div>
-                <div class="key" data-key="k">k</div>
-                <div class="key" data-key="l">l</div>
-            </div>
-            <div class="keyboard-row">
-                <div class="key" data-key="z">z</div>
-                <div class="key" data-key="x">x</div>
-                <div class="key" data-key="c">c</div>
-                <div class="key" data-key="v">v</div>
-                <div class="key" data-key="b">b</div>
-                <div class="key" data-key="n">n</div>
-                <div class="key" data-key="m">m</div>
-            </div>
-            <div class="keyboard-row">
-                <div class="key space-key" data-key=" ">Space</div>
-            </div>
+            <button id="next-test-btn" class="action-btn">Next Test</button>
         </div>
-
-        <!-- Stats display toggle -->
-        <div class="stats-toggle">
-            <button id="toggle-stats-btn">Show Typing History</button>
-        </div>
-        
-        <!-- Typing history chart (hidden by default) -->
-        <div id="typing-history" class="typing-history hidden">
-            <h3>Your Typing Performance</h3>
-            <div class="chart-container">
-                <canvas id="performance-chart"></canvas>
-            </div>
-        </div>
-
-        <!-- Placeholder for potential bottom ad -->
-        <div class="ad-placeholder">Ad Placeholder Bottom</div>
-
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
